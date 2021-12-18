@@ -82,7 +82,7 @@ waitTime=$(expr $(date "+%M") \* 60 + $(date "+%S"))
 while [ ! -e $userFolder/From${targetName}_request -o ! -e $targetFolder/From${userName}_request ]; do # 若沒有收到就會等待
  now=$(expr $(date "+%M") \* 60 + $(date "+%S") - $waitTime )
  echo "等待$now秒……"
- if [ $(expr $waitTime + 30 ) -le $now ];then
+ if [ 30 -le $now ];then
   echo "等待時間過久，請重新確認！"
   rm $targetFolder/From${userName}_* # 刪除傳送信號
   exit
