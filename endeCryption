@@ -1,0 +1,184 @@
+#!/bin/bash
+
+# 常使用的變數欄位
+error=0
+currentPwd=$(pwd) # 此為目前執行環境
+
+### step 1: 請輸入使用者名稱，超過五次則會跳出程式
+checkUser=false
+users=$(echo $(ls ./user)) # 比對是否有此使用者
+while [ $checkUser = false ];do
+ read -p "請輸入使用者名稱: " userName
+ for user in $users;do
+  if [ $user = $userName ];then
+   checkUser=true
+  fi
+ done
+
+ ((error++)) # 每錯誤一次，就增加一次錯誤次數，計算到第五次 
+ if [ $error -eq 5 ] ;then
+  echo "輸入太多次錯誤，請重新來過！"
+  exit
+ fi
+
+done
+
+### step 2: 先建立公私鑰
+userFolder=${currentPwd}/user/$userName # 使用者資料夾
+userPriKey=$userFolder/$userName.PriKey
+userPubKey=$userFolder/$userName.PubKey
+
+if [ -e $userPriKey -a -e $userPubKey ]; then # 檢查是否已經存在鑰匙
+ echo "公、私鑰匙已確認 "
+elif [ -e $userPriKey ]; then
+ echo "只有私鑰存在，正在建立公鑰中…… "
+ openssl rsa -in $userPriKey -pubout -out $userPubKey 2> /dev/null
+else
+ if [ -e $userPubKey ]; then
+  echo "只有公鑰存在！因此正在重新產生私鑰及公鑰中…… "
+  rm $userPubKey
+ fi
+ openssl genrsa -out $userPriKey &> /dev/null
+ openssl rsa -in $userPriKey -pubout -out $userPubKey 2> /dev/null
+fi
+
+### step 3: 是「傳送者」還是「接收者，超過五次則會跳出程式
+Charactor='NONE' # 使用者的代號（Receiver/Transporter）
+error=0 # 錯誤次數歸零
+# 若輸入的值非傳送者或接收者，則會重複執行
+while [ $Charactor != Receiver -a $Charactor != Transporter ];do
+ read -p "請問你是接收者還是傳送者（Receiver/Transporter）" Charactor
+
+ ((error++))
+ if [ $error -eq 5 ] ;then
+  echo "輸入太多次錯誤，請重新來過！"
+  exit
+ fi
+done
+
+nowTime=$(echo $(date +"%Y-%m-%d|%H:%M"))
+### step 4: 建立傳送信號
+### step 1: 請輸入對想名稱，超過五次則會跳出程式
+checkUser=false
+error=0
+while [ $checkUser = false ];do
+ read -p "請問你想連線的對象是？ " targetName
+ for user in $users;do
+  if [ $user = $targetName ];then
+   checkUser=true
+  fi
+ done
+ ((error++)) # 每錯誤一次，就增加一次錯誤次數，計算到第五次 
+ if [ $error -eq 5 ] ;then
+  echo "輸入太多次錯誤，請重新來過！"
+  exit
+ fi
+done
+
+targetFolder=${currentPwd}/user/$targetName # 目標資料夾
+touch $targetFolder/From${userName}_request # 建立傳送訊號
+# 確認接收者及傳送者互相收到連接請求
+waitTime=$(expr $(date "+%M") \* 60 + $(date "+%S"))
+while [ ! -e $userFolder/From${targetName}_request -o ! -e $targetFolder/From${userName}_request ]; do # 若沒有收到就會等待
+ now=$(expr $(date "+%M") \* 60 + $(date "+%S") - $waitTime )
+ echo "等待$now秒……"
+ if [ $(expr $waitTime + 30 ) -le $now ];then
+  echo "等待時間過久，請重新確認！"
+  rm $targetFolder/From${userName}_* # 刪除傳送信號
+  exit
+ fi
+ sleep 1
+done
+
+cp ${userFolder}/${userName}.PubKey ${targetFolder}
+
+newFolder=$userFolder/$nowTime.dir
+mkdir $newFolder
+chmod 777 $newFolder
+### step : 若是傳送者
+if [ $Charactor = Transporter ];then
+ trans=$newFolder/trans
+ mkdir $trans
+
+ messageName=$userFolder/message_${userName} # 原文檔案
+ # 使用對稱加密方法 加密原文檔案
+ read -p "請輸入密碼加密文件（使用協定為rc4）： " Symmetric_key
+ openssl rc4 -e -in $messageName -out $trans/Message.rc4 -k $Symmetric_key &> /dev/null
+
+ # 非對稱加密「對稱密碼」，使用對方的公鑰
+ echo $Symmetric_key > $newFolder/sym_key
+ openssl rsautl -encrypt -pubin -inkey $userFolder/${targetName}.PubKey -in $newFolder/sym_key -out $trans/sym_key.rsa
+
+ # 傳送雜湊，使用自己的私鑰做簽章
+ MD5=$(openssl MD5 $messageName | xargs | cut -f 2 -d " " )
+ echo $MD5 > $newFolder/HashValue_MD5; echo "傳送的雜湊值為（MD5）"
+ openssl rsautl -sign -inkey $userPriKey -in $newFolder/HashValue_MD5 -out $trans/HashValue_MD5.rsa
+
+ cp $trans/* ${targetFolder}/$nowTime.dir
+ touch ${targetFolder}/$nowTime.dir/enDone
+
+ while [ ! -e $newFolder/HashValue_sha256.rsa ]; do
+  sleep 1
+ done
+
+ openssl rsautl -verify -pubin -inkey $userFolder/${targetName}.PubKey -in $newFolder/HashValue_sha256.rsa -out $newFolder/HashValue_sha256.ans
+ sha256=$(openssl sha256 $userFolder/message_${userName} | xargs | cut -f 2 -d " " )
+ if [ $sha256 = $(cat $newFolder/HashValue_sha256.ans) ];then
+  echo "比對雜湊正確！（sha256）"
+ else
+  echo "比對失敗！（sha256）"
+ fi
+
+
+### step : 若是接收者
+else
+ # 等待加密方
+ while [ ! -e $newFolder/enDone ];do
+  sleep 1
+ done
+
+ ans=$newFolder/ans
+ mkdir $ans
+
+ # 使用自己的私鑰解開對稱式密碼資料
+ openssl rsautl -decrypt -inkey $userPriKey -in $newFolder/sym_key.rsa -out $ans/sym_key.ans
+ sym_key=$(cat $ans/sym_key.ans)
+
+ # 使用對稱密碼解開對稱資料
+ echo "使用協定為rc4"
+ openssl rc4 -d -in $newFolder/Message.rc4 -out $ans/Message.ans -k $sym_key 2> /dev/null
+
+ # 使用對方的公鑰解簽章
+ openssl rsautl -verify -pubin -inkey $userFolder/${targetName}.PubKey -in $newFolder/HashValue_MD5.rsa -out $ans/HashValue_MD5.ans
+ # 比對原文和傳送過得的雜湊值
+ MD5=$(openssl MD5 $ans/Message.ans | xargs | cut -f 2 -d " " )
+ if [ $MD5 = $(cat $ans/HashValue_MD5.ans) ];then
+  echo "雜湊比對統一（MD5）"
+ else
+  echo "比對失敗(MD5)"
+ fi
+
+ # 由接收方傳送雜湊值
+ sha256=$(openssl sha256 $ans/Message.ans | xargs | cut -f 2 -d " " )
+ echo $sha256 > $newFolder/HashValue_sha256; echo "傳送的雜湊值為（sha256）"
+ openssl rsautl -sign -inkey $userPriKey -in $newFolder/HashValue_sha256 -out ${targetFolder}/${nowTime}.dir/HashValue_sha256.rsa
+
+ read -p "是否要閱讀傳送過來的訊息？(true/false)" readNow
+ if [ $readNow = true ]; then
+  cat $ans/Message.ans
+ else
+  echo "正在退出中..."
+ fi
+
+fi
+
+
+### step last: 步驟都做完了可以開始刪除
+sleep 2
+touch $targetFolder/From${userName}_done
+while [ ! -e ${userFolder}/From${targetName}_done ]; do
+ sleep 1
+done
+sleep 1
+rm $targetFolder/From${userName}_* # 刪除傳送信號
+echo "傳送資料完成"

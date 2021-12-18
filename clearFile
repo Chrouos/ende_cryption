@@ -1,0 +1,12 @@
+#!/bin/bash
+
+### 除了訊息以外檔案刪除
+users=$(echo $(ls ./user))
+
+for user in $users; do
+ pwd=$(pwd)/user/$user
+ delFiles=$(echo $(ls $pwd | grep -v message_${user}))
+ for delFile in $delFiles; do
+  rm -r $pwd/$delFile
+ done
+done
