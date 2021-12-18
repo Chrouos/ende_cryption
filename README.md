@@ -8,5 +8,5 @@
 4.錯誤太多會跳掉   
 
 # 使用 #
-在目錄上使用 endeCryption
+在目錄上使用 endeCryption   
 東西太多就用clearFile刪掉 
