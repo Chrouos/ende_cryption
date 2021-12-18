@@ -139,13 +139,16 @@ if [ $Charactor = Transporter ]; then
   echo "傳送的雜湊值為（MD5）"
   openssl rsautl -sign -inkey $userPriKey -in $newFolder/HashValue_MD5 -out $trans/HashValue_MD5.rsa
 
+  # 把要傳送的資料傳到對方資料夾中
   cp $trans/* ${targetFolder}/$nowTime.dir
   touch ${targetFolder}/$nowTime.dir/enDone
 
+  # 收到對方解密完後的雜湊值才繼續
   while [ ! -e $newFolder/HashValue_sha256.rsa ]; do
     sleep 1
   done
 
+  # 使用對方的公鑰來解簽章，並進行比對
   openssl rsautl -verify -pubin -inkey $userFolder/${targetName}.PubKey -in $newFolder/HashValue_sha256.rsa -out $newFolder/HashValue_sha256.ans
   sha256=$(openssl sha256 $userFolder/message_${userName} | xargs | cut -f 2 -d " ")
   if [ $sha256 = $(cat $newFolder/HashValue_sha256.ans) ]; then
@@ -163,6 +166,7 @@ else
     sleep 1
   done
 
+  # 建立資料夾
   ans=$newFolder/ans
   mkdir $ans
 
@@ -190,7 +194,8 @@ else
   echo "傳送的雜湊值為（sha256）"
   openssl rsautl -sign -inkey $userPriKey -in $newFolder/HashValue_sha256 -out ${targetFolder}/${nowTime}.dir/HashValue_sha256.rsa
 
-  read -p "是否要閱讀傳送過來的訊息？(true/false)" readNow
+  # 解讀解密完後的訊息原文
+  read -p "是否要閱讀傳送過來的訊息？(true/false): " readNow
   if [ $readNow = true ]; then
     cat $ans/Message.ans
   else
