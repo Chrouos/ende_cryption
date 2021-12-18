@@ -12,7 +12,7 @@
 東西太多就用clearFile刪掉 
 
 # 環境 #
-- 兩個可執行程式 ( clearFile, endeCryption)   
+- 兩個可執行程式 ( *clearFile, endeCryption*)   
 - 存放 user的目錄 ( 裡面有使用者的資料夾)   
 - 使用者的資料夾放著訊息原文(可更改）   
 ![image](https://user-images.githubusercontent.com/56072039/146648545-84413ce5-5c75-426a-8ba1-58299e1c1a69.png)
