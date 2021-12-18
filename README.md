@@ -4,7 +4,9 @@
 # 準備 #
 1.必須先建立環境，裡面有使用者的資料夾(ex A,B...)   
 2.資料夾內的原文名稱需是:message_"name"，name根據使用者名稱變更   
-3.等待時間太久會跳掉   
+3.等待時間太久會跳掉    
+![image](https://user-images.githubusercontent.com/56072039/146652185-34760a45-876b-4d7b-a49d-1da1d44e38aa.png)
+
 4.錯誤太多會跳掉   
 
 # 使用 #
