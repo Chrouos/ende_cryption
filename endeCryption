@@ -1,11 +1,21 @@
 #!/bin/bash
 
 # 常使用的變數欄位
-error=0
-currentPwd=$(pwd)          # 此為目前執行環境
-users=$(echo $(ls ./user)) # 所有使用者名稱
+currentPwd=$(pwd) # 此為目前執行環境
+
+# 是否建立環境
+read -p "是否建立環境or還不是使用者需建立(true/false): " isUser
+if [ $isUser = true ]; then
+  $currentPwd/createUser
+fi
+
+echo "正式進入複合式傳送金鑰系統中...."
+echo " "
 
 # -------------------------------------------------- #
+
+error=0
+users=$(echo $(ls ./user))
 
 ### step 1: 輸入使用者名稱，超過五次則會跳出程式
 checkUser=false
@@ -67,9 +77,10 @@ while [ $Charactor != Receiver -a $Charactor != Transporter ]; do
 done
 
 # -------------------------------------------------- #
+users=$(echo $(ls ./user))
 
 ### step 4: 建立傳送信號
-nowTime=$(echo $(date +"%Y-%m-%d|%H:%M"))
+nowTime=$(echo $(date +"%Y-%m-%d_%H:%M"))
 checkUser=false
 error=0
 while [ $checkUser = false ]; do
@@ -91,8 +102,16 @@ while [ $checkUser = false ]; do
 
 done
 
-targetFolder=${currentPwd}/user/$targetName            # 目標資料夾
-touch $targetFolder/From${userName}_request            # 建立傳送訊號
+targetFolder=${currentPwd}/user/$targetName # 目標資料夾
+touch $targetFolder/From${userName}_request # 建立傳送訊號
+
+# 建立統一且不重複的文件名稱
+if [ $Charactor = Transporter ]; then
+  Time_RandNum=$(echo ${nowTime}_$(expr $RANDOM % 100))
+  echo $Time_RandNum >${userFolder}/FileName
+  cp ${userFolder}/FileName ${targetFolder}
+fi
+
 nowSecTime=$(expr $(date "+%M") \* 60 + $(date "+%S")) # 目前時間(sec)
 # 確認接收者及傳送者互相收到連接請求  # 若沒有收到req就會等待
 while [ ! -e $userFolder/From${targetName}_request -o ! -e $targetFolder/From${userName}_request ]; do
@@ -115,7 +134,10 @@ done
 ### step 5: 進入角色判定（傳送者/接收者)
 
 cp ${userFolder}/${userName}.PubKey ${targetFolder} # 傳送公鑰到對方資料夾
-newFolder=$userFolder/$nowTime.dir                  # 建立一個新的資料夾（以時間作為名稱）
+
+newFolderName=$(cat $userFolder/FileName)
+newFolder=$userFolder/${newFolderName}.dir # 建立一個新的資料夾（以時間作為名稱）
+rm $userFolder/FileName
 mkdir $newFolder
 chmod 777 $newFolder
 
@@ -139,16 +161,13 @@ if [ $Charactor = Transporter ]; then
   echo "傳送的雜湊值為（MD5）"
   openssl rsautl -sign -inkey $userPriKey -in $newFolder/HashValue_MD5 -out $trans/HashValue_MD5.rsa
 
-  # 把要傳送的資料傳到對方資料夾中
-  cp $trans/* ${targetFolder}/$nowTime.dir
-  touch ${targetFolder}/$nowTime.dir/enDone
+  cp $trans/* ${targetFolder}/$newFolderName.dir
+  touch ${targetFolder}/$newFolderName.dir/enDone
 
-  # 收到對方解密完後的雜湊值才繼續
   while [ ! -e $newFolder/HashValue_sha256.rsa ]; do
     sleep 1
   done
 
-  # 使用對方的公鑰來解簽章，並進行比對
   openssl rsautl -verify -pubin -inkey $userFolder/${targetName}.PubKey -in $newFolder/HashValue_sha256.rsa -out $newFolder/HashValue_sha256.ans
   sha256=$(openssl sha256 $userFolder/message_${userName} | xargs | cut -f 2 -d " ")
   if [ $sha256 = $(cat $newFolder/HashValue_sha256.ans) ]; then
@@ -166,7 +185,6 @@ else
     sleep 1
   done
 
-  # 建立資料夾
   ans=$newFolder/ans
   mkdir $ans
 
@@ -192,10 +210,9 @@ else
   sha256=$(openssl sha256 $ans/Message.ans | xargs | cut -f 2 -d " ")
   echo $sha256 >$newFolder/HashValue_sha256
   echo "傳送的雜湊值為（sha256）"
-  openssl rsautl -sign -inkey $userPriKey -in $newFolder/HashValue_sha256 -out ${targetFolder}/${nowTime}.dir/HashValue_sha256.rsa
+  openssl rsautl -sign -inkey $userPriKey -in $newFolder/HashValue_sha256 -out ${targetFolder}/${newFolderName}.dir/HashValue_sha256.rsa
 
-  # 解讀解密完後的訊息原文
-  read -p "是否要閱讀傳送過來的訊息？(true/false): " readNow
+  read -p "是否要閱讀傳送過來的訊息？(true/false)" readNow
   if [ $readNow = true ]; then
     cat $ans/Message.ans
   else

@@ -1,0 +1,51 @@
+#!/bin/bash
+currentPwd=$(pwd) # 目前執行環境
+
+
+### 確認是否有 USER 資料夾
+if [ ! -d user ]; then # 沒有資料夾，建立一個資料夾的環境
+ mkdir user # 建立的資料夾就叫 users
+fi
+echo "正在進入環境中..."
+
+
+### 創立使用者
+read -p "請輸入使用者名稱: " userName
+userFolder=$currentPwd/user/$userName
+
+## 若不是使用者，就建立使用者資料夾
+if [ ! -d $userFolder ]; then
+ echo "你還不是使用者，正在建立資料夾中..."
+ mkdir $userFolder
+else
+ echo "歡迎進入"
+fi
+
+### 輸入想傳送的訊息
+msgIn='None'
+error=0
+while [ $msgIn != Upload -a $msgIn != Input ]; do
+ read -p "請選擇上傳或手動輸入想傳送的訊息(Upload / Input):" msgIn
+ ((error++))
+ if [ $error -eq 5 ];then
+  echo "輸入太多次錯誤"
+  exit
+ fi
+done
+
+### 上傳
+if [ $msgIn = Upload ];then
+ read -p "請輸入上傳路徑 + 檔案名稱: " messagePwd
+ if [ -f $messagePwd ]; then # 有此檔案才上傳
+  cp $messagePwd $userFolder/message_$userName
+ else
+  echo "找不到！請重新確認！"
+  exit
+ fi
+else
+ read -p "請輸入想傳送的訊息: " message
+ echo $message > $userFolder/message_$userName
+fi
+
+echo "已成功存入訊息（message_${userName}）"
+
