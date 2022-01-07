@@ -2,7 +2,7 @@
  利用複合式金鑰系統建立一個環境，進行傳輸
 
 # 準備 #
-1.必須先建立環境，裡面有使用者的資料夾(ex A,B...)   
+1.直接在目錄中使用 endeCryption 即可，訊息也可直接建立
 2.資料夾內的原文名稱需是:message_"name"，name根據使用者名稱變更   
 3.等待時間太久會跳掉    
 ![image](https://user-images.githubusercontent.com/56072039/146652185-34760a45-876b-4d7b-a49d-1da1d44e38aa.png)
@@ -18,6 +18,13 @@
 - 存放 user的目錄 ( 裡面有使用者的資料夾)   
 - 使用者的資料夾放著訊息原文(可更改）   
 ![image](https://user-images.githubusercontent.com/56072039/146648545-84413ce5-5c75-426a-8ba1-58299e1c1a69.png)
+
+
+# 使用順序 #
+兩個視窗環境直接使用即可，詳細可以看 複合式金鑰第二版.mkv
+```
+./endeCryption
+```
 
 # endeCryption #
 1. 輸入使用者名稱 (接收方)    
