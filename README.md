@@ -80,3 +80,8 @@
 > openssl rsautl -verify -pubin -inkey $userFolder/${targetName}.PubKey -in $newFolder/HashValue_sha256.rsa -out $newFolder/HashValue_sha256.ans
 > ```
 <br>
+
+# 原則 #  
+![完整複合式金鑰](https://user-images.githubusercontent.com/56072039/151663225-51352ec3-8a54-4587-a21b-f7ecb4d1df0c.jpg)
+
+
