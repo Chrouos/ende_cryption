@@ -1,5 +1,6 @@
 # ende_cryption
  利用複合式金鑰系統建立一個環境，進行傳輸
+ https://www.youtube.com/watch?v=XqwQj1rwEkE  
 
 # 準備 #
 1.直接在目錄中使用 endeCryption 即可，訊息也可直接建立
